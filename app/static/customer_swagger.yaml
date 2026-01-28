@@ -1,0 +1,322 @@
+swagger: '2.0'
+info:
+  title: 'Customer Management API'
+  description: 'API for managing customer accounts'
+  version: '1.0.0'
+
+host: 'https://api-application-factory-pattern.onrender.com'
+schemes:
+  - "https"
+consumes:
+  - "application/json"
+produces:
+  - "application/json"
+
+securityDefinitions:
+  bearerAuth:
+    type: apiKey
+    name: Authorization
+    in: header
+    description: "Customer token authentication. Format: Bearer <token>"
+
+paths:
+  /customers/login:
+    post:
+      tags:
+        - Customers
+      summary: "Customer login endpoint"
+      description: "Validates customer credentials (email and password) and generates a customer-specific token"
+      parameters:
+        - in: "body"
+          name: "body"
+          description: "Customer login credentials"
+          required: true
+          schema:
+            $ref: "#/definitions/CustomerLoginCredentials"
+      responses:
+        200:
+          description: "Login successful"
+          schema:
+            $ref: "#/definitions/LoginResponse"
+          examples:
+            application/json:
+              message: "Welcome back, John!"
+              token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        401:
+          description: "Invalid credentials"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+
+  /customers:
+    post:
+      tags:
+        - Customers
+      summary: "Register new customer"
+      description: "Create a new customer account (rate limited to 30 per day)"
+      parameters:
+        - in: "body"
+          name: "body"
+          description: "New customer information"
+          required: true
+          schema:
+            $ref: "#/definitions/CustomerInput"
+      responses:
+        201:
+          description: "Customer created successfully"
+          schema:
+            $ref: "#/definitions/CustomerResponse"
+          examples:
+            application/json:
+              id: 1
+              first_name: "John"
+              last_name: "Doe"
+              email: "john@example.com"
+              phone: "555-0123"
+              address: "123 Main St"
+        400:
+          description: "Validation error"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+
+    get:
+      tags:
+        - Customers
+      summary: "Get all customers (paginated)"
+      description: "Retrieve a paginated list of all customers. Results are cached for 60 seconds."
+      parameters:
+        - in: "query"
+          name: "page"
+          type: integer
+          description: "Page number (default: 1)"
+          required: false
+        - in: "query"
+          name: "per_page"
+          type: integer
+          description: "Items per page (default: 10)"
+          required: false
+      responses:
+        200:
+          description: "Successfully retrieved customers"
+          schema:
+            $ref: "#/definitions/CustomersResponse"
+
+    put:
+      tags:
+        - Customers
+      summary: "Update customer profile"
+      description: "Update the authenticated customer's own profile information"
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: "body"
+          name: "body"
+          description: "Updated customer information"
+          required: true
+          schema:
+            $ref: "#/definitions/CustomerInput"
+      responses:
+        200:
+          description: "Customer updated successfully"
+          schema:
+            $ref: "#/definitions/CustomerResponse"
+        404:
+          description: "Customer not found"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+
+  /customers/{customer_id}:
+    get:
+      tags:
+        - Customers
+      summary: "Get customer by ID"
+      description: "Retrieve a specific customer's information by their ID"
+      parameters:
+        - in: "path"
+          name: "customer_id"
+          type: integer
+          required: true
+          description: "Customer ID"
+      responses:
+        200:
+          description: "Customer found"
+          schema:
+            $ref: "#/definitions/CustomerResponse"
+        404:
+          description: "Customer not found"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+
+    delete:
+      tags:
+        - Customers
+      summary: "Delete customer"
+      description: "Delete a customer by ID (rate limited to 5 per day)"
+      parameters:
+        - in: "path"
+          name: "customer_id"
+          type: integer
+          required: true
+          description: "Customer ID to delete"
+      responses:
+        200:
+          description: "Customer deleted successfully"
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+        404:
+          description: "Customer not found"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+
+  /customers/profile:
+    get:
+      tags:
+        - Customers
+      summary: "Get my profile"
+      description: "Retrieve the authenticated customer's profile information"
+      security:
+        - bearerAuth: []
+      responses:
+        200:
+          description: "Profile retrieved successfully"
+          schema:
+            $ref: "#/definitions/CustomerResponse"
+        404:
+          description: "Customer not found"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+
+  /customers/my-tickets:
+    get:
+      tags:
+        - Customers
+      summary: "Get my service tickets"
+      description: "Retrieve all service tickets for the authenticated customer"
+      security:
+        - bearerAuth: []
+      responses:
+        200:
+          description: "Service tickets retrieved successfully"
+          schema:
+            type: array
+            items:
+              $ref: "#/definitions/ServiceTicketResponse"
+
+  /customers/search:
+    get:
+      tags:
+        - Customers
+      summary: "Search customer by email"
+      description: "Find a customer by their email address (case-insensitive search)"
+      parameters:
+        - in: "query"
+          name: "email"
+          type: string
+          required: true
+          description: "Customer email address to search for"
+      responses:
+        200:
+          description: "Customer found"
+          schema:
+            $ref: "#/definitions/CustomerResponse"
+        400:
+          description: "Email parameter is required"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        404:
+          description: "Customer not found"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+
+definitions:
+  CustomerLoginCredentials:
+    type: object
+    properties:
+      email:
+        type: string
+        example: "john@example.com"
+      password:
+        type: string
+        example: "password123"
+    required:
+      - email
+      - password
+
+  LoginResponse:
+    type: object
+    properties:
+      message:
+        type: string
+      token:
+        type: string
+
+  CustomerInput:
+    type: object
+    properties:
+      first_name:
+        type: string
+        example: "John"
+      last_name:
+        type: string
+        example: "Doe"
+      email:
+        type: string
+        example: "john@example.com"
+      password:
+        type: string
+        example: "password123"
+      phone:
+        type: string
+        example: "555-0123"
+      address:
+        type: string
+        example: "123 Main St"
+
+  CustomerResponse:
+    type: object
+    properties:
+      id:
+        type: integer
+      first_name:
+        type: string
+      last_name:
+        type: string
+      email:
+        type: string
+      phone:
+        type: string
+      address:
+        type: string
+      password:
+        type: string
+        description: "Hashed password"
+
+  CustomersResponse:
+    type: array
+    items:
+      $ref: "#/definitions/CustomerResponse"
+
+  ServiceTicketResponse:
+    type: object
+    properties:
+      id:
+        type: integer
+      customer_id:
+        type: integer
+      description:
+        type: string
+      status:
+        type: string
+      created_at:
+        type: string
+        format: date-time
+
+  ErrorResponse:
+    type: object
+    properties:
+      error:
+        type: string
+      message:
+        type: string

@@ -1,0 +1,359 @@
+swagger: '2.0'
+info:
+  title: 'Parts and Inventory Management API'
+  description: 'API for managing auto parts inventory and individual parts'
+  version: '1.0.0'
+
+host: 'https://api-application-factory-pattern.onrender.com'
+schemes:
+  - "https"
+consumes:
+  - "application/json"
+produces:
+  - "application/json"
+
+securityDefinitions:
+  bearerAuth:
+    type: apiKey
+    name: Authorization
+    in: header
+    description: "Token authentication for protected endpoints. Format: Bearer <token>"
+
+paths:
+  # ============== INVENTORY ROUTES ==============
+  /parts/inventory:
+    post:
+      tags:
+        - Inventory
+      summary: "Create inventory item"
+      description: "Add a new inventory item to track parts stock"
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: "body"
+          name: "body"
+          description: "New inventory item information"
+          required: true
+          schema:
+            $ref: "#/definitions/InventoryInput"
+      responses:
+        201:
+          description: "Inventory item created successfully"
+          schema:
+            $ref: "#/definitions/InventoryResponse"
+          examples:
+            application/json:
+              id: 1
+              part_name: "Brake Pad"
+              quantity: 50
+              location: "Shelf A-3"
+              reorder_level: 10
+        400:
+          description: "Validation error"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+
+    get:
+      tags:
+        - Inventory
+      summary: "Get all inventory items"
+      description: "Retrieve a complete list of all inventory items"
+      responses:
+        200:
+          description: "Successfully retrieved inventory"
+          schema:
+            $ref: "#/definitions/InventoriesResponse"
+
+  /parts/inventory/{inventory_id}:
+    get:
+      tags:
+        - Inventory
+      summary: "Get inventory item by ID"
+      description: "Retrieve a specific inventory item by its ID"
+      parameters:
+        - in: "path"
+          name: "inventory_id"
+          type: integer
+          required: true
+          description: "Inventory item ID"
+      responses:
+        200:
+          description: "Inventory item found"
+          schema:
+            $ref: "#/definitions/InventoryResponse"
+        404:
+          description: "Inventory item not found"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+
+    put:
+      tags:
+        - Inventory
+      summary: "Update inventory item"
+      description: "Update an existing inventory item (e.g., adjust quantity or location)"
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: "path"
+          name: "inventory_id"
+          type: integer
+          required: true
+          description: "Inventory item ID"
+        - in: "body"
+          name: "body"
+          description: "Updated inventory information"
+          required: true
+          schema:
+            $ref: "#/definitions/InventoryInput"
+      responses:
+        200:
+          description: "Inventory item updated successfully"
+          schema:
+            $ref: "#/definitions/InventoryResponse"
+        404:
+          description: "Inventory item not found"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+
+    delete:
+      tags:
+        - Inventory
+      summary: "Delete inventory item"
+      description: "Remove an inventory item from the system (rate limited to 5 per day)"
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: "path"
+          name: "inventory_id"
+          type: integer
+          required: true
+          description: "Inventory item ID to delete"
+      responses:
+        200:
+          description: "Inventory item deleted successfully"
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+        404:
+          description: "Inventory item not found"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+
+  # ============== PARTS ROUTES ==============
+  /parts:
+    post:
+      tags:
+        - Parts
+      summary: "Create part"
+      description: "Add a new part to the system for use in service tickets"
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: "body"
+          name: "body"
+          description: "New part information"
+          required: true
+          schema:
+            $ref: "#/definitions/PartInput"
+      responses:
+        201:
+          description: "Part created successfully"
+          schema:
+            $ref: "#/definitions/PartResponse"
+          examples:
+            application/json:
+              id: 1
+              name: "Oil Filter"
+              part_number: "OF-12345"
+              cost: 15.99
+              ticket_id: null
+        400:
+          description: "Validation error"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+
+    get:
+      tags:
+        - Parts
+      summary: "Get all parts"
+      description: "Retrieve a list of all parts in the system"
+      responses:
+        200:
+          description: "Successfully retrieved parts"
+          schema:
+            $ref: "#/definitions/PartsResponse"
+
+  /parts/{part_id}:
+    get:
+      tags:
+        - Parts
+      summary: "Get part by ID"
+      description: "Retrieve a specific part by its ID"
+      parameters:
+        - in: "path"
+          name: "part_id"
+          type: integer
+          required: true
+          description: "Part ID"
+      responses:
+        200:
+          description: "Part found"
+          schema:
+            $ref: "#/definitions/PartResponse"
+        404:
+          description: "Part not found"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+
+    put:
+      tags:
+        - Parts
+      summary: "Update part"
+      description: "Update an existing part's information"
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: "path"
+          name: "part_id"
+          type: integer
+          required: true
+          description: "Part ID"
+        - in: "body"
+          name: "body"
+          description: "Updated part information"
+          required: true
+          schema:
+            $ref: "#/definitions/PartInput"
+      responses:
+        200:
+          description: "Part updated successfully"
+          schema:
+            $ref: "#/definitions/PartResponse"
+        404:
+          description: "Part not found"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+
+    delete:
+      tags:
+        - Parts
+      summary: "Delete part"
+      description: "Remove a part from the system"
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: "path"
+          name: "part_id"
+          type: integer
+          required: true
+          description: "Part ID to delete"
+      responses:
+        200:
+          description: "Part deleted successfully"
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+        404:
+          description: "Part not found"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+
+  /parts/available:
+    get:
+      tags:
+        - Parts
+      summary: "Get available parts"
+      description: "Retrieve all parts that are not currently assigned to any service ticket"
+      responses:
+        200:
+          description: "Successfully retrieved available parts"
+          schema:
+            $ref: "#/definitions/PartsResponse"
+
+definitions:
+  InventoryInput:
+    type: object
+    properties:
+      part_name:
+        type: string
+        example: "Brake Pad"
+      quantity:
+        type: integer
+        example: 50
+      location:
+        type: string
+        example: "Shelf A-3"
+      reorder_level:
+        type: integer
+        example: 10
+        description: "Minimum quantity before reordering"
+
+  InventoryResponse:
+    type: object
+    properties:
+      id:
+        type: integer
+      part_name:
+        type: string
+      quantity:
+        type: integer
+      location:
+        type: string
+      reorder_level:
+        type: integer
+
+  InventoriesResponse:
+    type: array
+    items:
+      $ref: "#/definitions/InventoryResponse"
+
+  PartInput:
+    type: object
+    properties:
+      name:
+        type: string
+        example: "Oil Filter"
+      part_number:
+        type: string
+        example: "OF-12345"
+      cost:
+        type: number
+        format: float
+        example: 15.99
+      ticket_id:
+        type: integer
+        example: null
+        description: "ID of the service ticket this part is assigned to (null if unassigned)"
+
+  PartResponse:
+    type: object
+    properties:
+      id:
+        type: integer
+      name:
+        type: string
+      part_number:
+        type: string
+      cost:
+        type: number
+        format: float
+      ticket_id:
+        type: integer
+        description: "ID of the service ticket this part is assigned to"
+
+  PartsResponse:
+    type: array
+    items:
+      $ref: "#/definitions/PartResponse"
+
+  ErrorResponse:
+    type: object
+    properties:
+      error:
+        type: string
+      message:
+        type: string

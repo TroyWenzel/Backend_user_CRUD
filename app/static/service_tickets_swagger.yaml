@@ -1,0 +1,443 @@
+swagger: '2.0'
+info:
+  title: 'Service Tickets API'
+  description: 'API for managing service tickets, mechanic assignments, and part allocations'
+  version: '1.0.0'
+
+host: 'https://api-application-factory-pattern.onrender.com'
+schemes:
+  - "https"
+consumes:
+  - "application/json"
+produces:
+  - "application/json"
+
+securityDefinitions:
+  bearerAuth:
+    type: apiKey
+    name: Authorization
+    in: header
+    description: "Token authentication for mechanics. Format: Bearer <token>"
+
+paths:
+  /service-tickets:
+    post:
+      tags:
+        - Service Tickets
+      summary: "Create service ticket"
+      description: "Create a new service ticket for a customer (rate limited to 10 per day)"
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: "body"
+          name: "body"
+          description: "New service ticket information"
+          required: true
+          schema:
+            $ref: "#/definitions/ServiceTicketInput"
+      responses:
+        201:
+          description: "Service ticket created successfully"
+          schema:
+            $ref: "#/definitions/ServiceTicketResponse"
+          examples:
+            application/json:
+              id: 1
+              customer_id: 5
+              description: "Oil change and tire rotation"
+              status: "pending"
+              created_at: "2024-01-15T10:30:00Z"
+        400:
+          description: "Validation error"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+
+    get:
+      tags:
+        - Service Tickets
+      summary: "Get all service tickets (paginated)"
+      description: "Retrieve a paginated list of all service tickets. Requires authentication."
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: "query"
+          name: "page"
+          type: integer
+          description: "Page number (default: 1)"
+          required: false
+        - in: "query"
+          name: "per_page"
+          type: integer
+          description: "Items per page (default: 5)"
+          required: false
+      responses:
+        200:
+          description: "Successfully retrieved service tickets"
+          schema:
+            $ref: "#/definitions/ServiceTicketsResponse"
+
+  /service-tickets/{ticket_id}:
+    get:
+      tags:
+        - Service Tickets
+      summary: "Get service ticket by ID"
+      description: "Retrieve a specific service ticket by its ID"
+      parameters:
+        - in: "path"
+          name: "ticket_id"
+          type: integer
+          required: true
+          description: "Service ticket ID"
+      responses:
+        200:
+          description: "Service ticket found"
+          schema:
+            $ref: "#/definitions/ServiceTicketResponse"
+        404:
+          description: "Service ticket not found"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+
+    put:
+      tags:
+        - Service Tickets
+      summary: "Update service ticket"
+      description: "Update a service ticket. Only mechanics assigned to the ticket can update it."
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: "path"
+          name: "ticket_id"
+          type: integer
+          required: true
+          description: "Service ticket ID"
+        - in: "body"
+          name: "body"
+          description: "Updated service ticket information"
+          required: true
+          schema:
+            $ref: "#/definitions/ServiceTicketUpdateInput"
+      responses:
+        200:
+          description: "Service ticket updated successfully"
+          schema:
+            $ref: "#/definitions/ServiceTicketResponse"
+        403:
+          description: "Unauthorized - mechanic not assigned to this ticket"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        404:
+          description: "Service ticket not found"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+
+    delete:
+      tags:
+        - Service Tickets
+      summary: "Delete service ticket"
+      description: "Delete a service ticket. Only mechanics assigned to the ticket can delete it. Rate limited to 5 per day."
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: "path"
+          name: "ticket_id"
+          type: integer
+          required: true
+          description: "Service ticket ID to delete"
+      responses:
+        200:
+          description: "Service ticket deleted successfully"
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+        403:
+          description: "Unauthorized - mechanic not assigned to this ticket"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        404:
+          description: "Service ticket not found"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+
+  /service-tickets/{ticket_id}/mechanics/{mechanic_id}:
+    post:
+      tags:
+        - Mechanic Assignment
+      summary: "Assign mechanic to ticket"
+      description: "Assign a mechanic to work on a specific service ticket"
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: "path"
+          name: "ticket_id"
+          type: integer
+          required: true
+          description: "Service ticket ID"
+        - in: "path"
+          name: "mechanic_id"
+          type: integer
+          required: true
+          description: "Mechanic ID to assign"
+      responses:
+        200:
+          description: "Mechanic assigned successfully"
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+          examples:
+            application/json:
+              message: "Mechanic Mike Johnson assigned to ticket 1"
+        400:
+          description: "Mechanic already assigned to this ticket"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        404:
+          description: "Service ticket or mechanic not found"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+
+    delete:
+      tags:
+        - Mechanic Assignment
+      summary: "Remove mechanic from ticket"
+      description: "Remove a mechanic's assignment from a service ticket"
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: "path"
+          name: "ticket_id"
+          type: integer
+          required: true
+          description: "Service ticket ID"
+        - in: "path"
+          name: "mechanic_id"
+          type: integer
+          required: true
+          description: "Mechanic ID to remove"
+      responses:
+        200:
+          description: "Mechanic removed successfully"
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+          examples:
+            application/json:
+              message: "Mechanic Mike Johnson removed from ticket 1"
+        400:
+          description: "Mechanic not assigned to this ticket"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        404:
+          description: "Service ticket or mechanic not found"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+
+  /service-tickets/{ticket_id}/parts/{part_id}:
+    post:
+      tags:
+        - Parts Assignment
+      summary: "Add part to service ticket"
+      description: "Assign a part to a service ticket for tracking parts used in repairs"
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: "path"
+          name: "ticket_id"
+          type: integer
+          required: true
+          description: "Service ticket ID"
+        - in: "path"
+          name: "part_id"
+          type: integer
+          required: true
+          description: "Part ID to add"
+      responses:
+        200:
+          description: "Part added successfully"
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+              part_id:
+                type: integer
+              ticket_id:
+                type: integer
+          examples:
+            application/json:
+              message: "Part 1 successfully added to ticket 1"
+              part_id: 1
+              ticket_id: 1
+        400:
+          description: "Part already assigned to a ticket"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        404:
+          description: "Service ticket or part not found"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+
+    delete:
+      tags:
+        - Parts Assignment
+      summary: "Remove part from service ticket"
+      description: "Remove a part assignment from a service ticket"
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: "path"
+          name: "ticket_id"
+          type: integer
+          required: true
+          description: "Service ticket ID"
+        - in: "path"
+          name: "part_id"
+          type: integer
+          required: true
+          description: "Part ID to remove"
+      responses:
+        200:
+          description: "Part removed successfully"
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+          examples:
+            application/json:
+              message: "Part 1 removed from ticket 1"
+        400:
+          description: "Part not assigned to this ticket"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        404:
+          description: "Service ticket or part not found"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+
+  /service-tickets/{ticket_id}/parts:
+    get:
+      tags:
+        - Parts Assignment
+      summary: "Get all parts for a ticket"
+      description: "Retrieve all parts assigned to a specific service ticket"
+      parameters:
+        - in: "path"
+          name: "ticket_id"
+          type: integer
+          required: true
+          description: "Service ticket ID"
+      responses:
+        200:
+          description: "Parts retrieved successfully"
+          schema:
+            type: array
+            items:
+              $ref: "#/definitions/PartResponse"
+        404:
+          description: "Service ticket not found"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+
+definitions:
+  ServiceTicketInput:
+    type: object
+    properties:
+      customer_id:
+        type: integer
+        example: 5
+        description: "ID of the customer requesting service"
+      description:
+        type: string
+        example: "Oil change and tire rotation"
+      status:
+        type: string
+        example: "pending"
+        description: "Status of the ticket (e.g., pending, in_progress, completed)"
+      estimated_cost:
+        type: number
+        format: float
+        example: 89.99
+      notes:
+        type: string
+        example: "Customer requested synthetic oil"
+
+  ServiceTicketUpdateInput:
+    type: object
+    properties:
+      description:
+        type: string
+        example: "Oil change, tire rotation, and brake inspection"
+      status:
+        type: string
+        example: "in_progress"
+      estimated_cost:
+        type: number
+        format: float
+        example: 129.99
+      notes:
+        type: string
+        example: "Found brake wear, recommended replacement"
+      mechanic_id:
+        type: array
+        items:
+          type: integer
+        example: [1, 2]
+        description: "Array of mechanic IDs to assign to this ticket"
+
+  ServiceTicketResponse:
+    type: object
+    properties:
+      id:
+        type: integer
+      customer_id:
+        type: integer
+      description:
+        type: string
+      status:
+        type: string
+      estimated_cost:
+        type: number
+        format: float
+      notes:
+        type: string
+      created_at:
+        type: string
+        format: date-time
+      updated_at:
+        type: string
+        format: date-time
+
+  ServiceTicketsResponse:
+    type: array
+    items:
+      $ref: "#/definitions/ServiceTicketResponse"
+
+  PartResponse:
+    type: object
+    properties:
+      id:
+        type: integer
+      name:
+        type: string
+      part_number:
+        type: string
+      cost:
+        type: number
+        format: float
+      ticket_id:
+        type: integer
+
+  ErrorResponse:
+    type: object
+    properties:
+      error:
+        type: string
+      message:
+        type: string

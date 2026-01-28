@@ -1,0 +1,1229 @@
+swagger: '2.0'
+info:
+  title: Mechanic Shop API
+  description: Complete API for managing mechanic shop operations including customers,
+    mechanics, parts, inventory, and service tickets
+  version: 1.0.0
+host: https://api-application-factory-pattern.onrender.com
+schemes:
+- https
+consumes:
+- application/json
+produces:
+- application/json
+securityDefinitions:
+  bearerAuth:
+    type: apiKey
+    name: Authorization
+    in: header
+    description: 'Token authentication. Format: Bearer <token>'
+paths:
+  /customers/login:
+    post:
+      tags:
+      - Customers
+      summary: Customer login endpoint
+      description: Validates customer credentials (email and password) and generates
+        a customer-specific token
+      parameters:
+      - in: body
+        name: body
+        description: Customer login credentials
+        required: true
+        schema:
+          $ref: '#/definitions/CustomerLoginCredentials'
+      responses:
+        200:
+          description: Login successful
+          schema:
+            $ref: '#/definitions/LoginResponse'
+          examples:
+            application/json:
+              message: Welcome back, John!
+              token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        401:
+          description: Invalid credentials
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+  /customers:
+    post:
+      tags:
+      - Customers
+      summary: Register new customer
+      description: Create a new customer account (rate limited to 30 per day)
+      parameters:
+      - in: body
+        name: body
+        description: New customer information
+        required: true
+        schema:
+          $ref: '#/definitions/CustomerInput'
+      responses:
+        201:
+          description: Customer created successfully
+          schema:
+            $ref: '#/definitions/CustomerResponse'
+          examples:
+            application/json:
+              id: 1
+              first_name: John
+              last_name: Doe
+              email: john@example.com
+              phone: 555-0123
+              address: 123 Main St
+        400:
+          description: Validation error
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+    get:
+      tags:
+      - Customers
+      summary: Get all customers (paginated)
+      description: Retrieve a paginated list of all customers. Results are cached
+        for 60 seconds.
+      parameters:
+      - in: query
+        name: page
+        type: integer
+        description: 'Page number (default: 1)'
+        required: false
+      - in: query
+        name: per_page
+        type: integer
+        description: 'Items per page (default: 10)'
+        required: false
+      responses:
+        200:
+          description: Successfully retrieved customers
+          schema:
+            $ref: '#/definitions/CustomersResponse'
+    put:
+      tags:
+      - Customers
+      summary: Update customer profile
+      description: Update the authenticated customer's own profile information
+      security:
+      - bearerAuth: []
+      parameters:
+      - in: body
+        name: body
+        description: Updated customer information
+        required: true
+        schema:
+          $ref: '#/definitions/CustomerInput'
+      responses:
+        200:
+          description: Customer updated successfully
+          schema:
+            $ref: '#/definitions/CustomerResponse'
+        404:
+          description: Customer not found
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+  /customers/{customer_id}:
+    get:
+      tags:
+      - Customers
+      summary: Get customer by ID
+      description: Retrieve a specific customer's information by their ID
+      parameters:
+      - in: path
+        name: customer_id
+        type: integer
+        required: true
+        description: Customer ID
+      responses:
+        200:
+          description: Customer found
+          schema:
+            $ref: '#/definitions/CustomerResponse'
+        404:
+          description: Customer not found
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+    delete:
+      tags:
+      - Customers
+      summary: Delete customer
+      description: Delete a customer by ID (rate limited to 5 per day)
+      parameters:
+      - in: path
+        name: customer_id
+        type: integer
+        required: true
+        description: Customer ID to delete
+      responses:
+        200:
+          description: Customer deleted successfully
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+        404:
+          description: Customer not found
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+  /customers/profile:
+    get:
+      tags:
+      - Customers
+      summary: Get my profile
+      description: Retrieve the authenticated customer's profile information
+      security:
+      - bearerAuth: []
+      responses:
+        200:
+          description: Profile retrieved successfully
+          schema:
+            $ref: '#/definitions/CustomerResponse'
+        404:
+          description: Customer not found
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+  /customers/my-tickets:
+    get:
+      tags:
+      - Customers
+      summary: Get my service tickets
+      description: Retrieve all service tickets for the authenticated customer
+      security:
+      - bearerAuth: []
+      responses:
+        200:
+          description: Service tickets retrieved successfully
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/ServiceTicketResponse'
+  /customers/search:
+    get:
+      tags:
+      - Customers
+      summary: Search customer by email
+      description: Find a customer by their email address (case-insensitive search)
+      parameters:
+      - in: query
+        name: email
+        type: string
+        required: true
+        description: Customer email address to search for
+      responses:
+        200:
+          description: Customer found
+          schema:
+            $ref: '#/definitions/CustomerResponse'
+        400:
+          description: Email parameter is required
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        404:
+          description: Customer not found
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+  /mechanics/login:
+    post:
+      tags:
+      - Mechanics
+      summary: Mechanic login endpoint
+      description: Validates mechanic credentials (email and password) and generates
+        a mechanic-specific token
+      parameters:
+      - in: body
+        name: body
+        description: Mechanic login credentials
+        required: true
+        schema:
+          $ref: '#/definitions/MechanicLoginCredentials'
+      responses:
+        200:
+          description: Login successful
+          schema:
+            $ref: '#/definitions/LoginResponse'
+          examples:
+            application/json:
+              message: Welcome back, Mike!
+              token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        401:
+          description: Invalid credentials
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+  /mechanics:
+    post:
+      tags:
+      - Mechanics
+      summary: Create new mechanic
+      description: Register a new mechanic account in the system
+      parameters:
+      - in: body
+        name: body
+        description: New mechanic information
+        required: true
+        schema:
+          $ref: '#/definitions/MechanicInput'
+      responses:
+        201:
+          description: Mechanic created successfully
+          schema:
+            $ref: '#/definitions/MechanicResponse'
+          examples:
+            application/json:
+              id: 1
+              first_name: Mike
+              last_name: Johnson
+              email: mike@shop.com
+              specialization: Engine Repair
+        400:
+          description: Validation error
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+    get:
+      tags:
+      - Mechanics
+      summary: Get all mechanics
+      description: Retrieve a list of all mechanics in the system
+      responses:
+        200:
+          description: Successfully retrieved mechanics
+          schema:
+            $ref: '#/definitions/MechanicsResponse'
+    put:
+      tags:
+      - Mechanics
+      summary: Update mechanic profile
+      description: Update the authenticated mechanic's own profile (rate limited to
+        5 per day)
+      security:
+      - bearerAuth: []
+      parameters:
+      - in: body
+        name: body
+        description: Updated mechanic information
+        required: true
+        schema:
+          $ref: '#/definitions/MechanicInput'
+      responses:
+        200:
+          description: Mechanic updated successfully
+          schema:
+            $ref: '#/definitions/MechanicResponse'
+        404:
+          description: Mechanic not found
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+    delete:
+      tags:
+      - Mechanics
+      summary: Delete mechanic account
+      description: Delete the authenticated mechanic's own account
+      security:
+      - bearerAuth: []
+      responses:
+        200:
+          description: Mechanic deleted successfully
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+        404:
+          description: Mechanic not found
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+  /mechanics/profile:
+    get:
+      tags:
+      - Mechanics
+      summary: Get my profile
+      description: Retrieve the authenticated mechanic's profile information
+      security:
+      - bearerAuth: []
+      responses:
+        200:
+          description: Profile retrieved successfully
+          schema:
+            $ref: '#/definitions/MechanicResponse'
+        404:
+          description: Mechanic not found
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+  /mechanics/my-tickets:
+    get:
+      tags:
+      - Mechanics
+      summary: Get my assigned tickets
+      description: Retrieve all service tickets assigned to the authenticated mechanic
+      security:
+      - bearerAuth: []
+      responses:
+        200:
+          description: Service tickets retrieved successfully
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/ServiceTicketResponse'
+        404:
+          description: Mechanic not found
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+  /mechanics/top-mechanics:
+    get:
+      tags:
+      - Mechanics
+      summary: Get top mechanics by ticket count
+      description: Retrieve the top 5 mechanics with the most assigned service tickets
+      responses:
+        200:
+          description: Top mechanics retrieved successfully
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/TopMechanicResponse'
+          examples:
+            application/json:
+            - id: 1
+              first_name: Mike
+              last_name: Johnson
+              email: mike@shop.com
+              ticket_count: 47
+            - id: 2
+              first_name: Sarah
+              last_name: Williams
+              email: sarah@shop.com
+              ticket_count: 42
+        404:
+          description: No mechanics found with tickets
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+  /parts/inventory:
+    post:
+      tags:
+      - Inventory
+      summary: Create inventory item
+      description: Add a new inventory item to track parts stock
+      security:
+      - bearerAuth: []
+      parameters:
+      - in: body
+        name: body
+        description: New inventory item information
+        required: true
+        schema:
+          $ref: '#/definitions/InventoryInput'
+      responses:
+        201:
+          description: Inventory item created successfully
+          schema:
+            $ref: '#/definitions/InventoryResponse'
+          examples:
+            application/json:
+              id: 1
+              part_name: Brake Pad
+              quantity: 50
+              location: Shelf A-3
+              reorder_level: 10
+        400:
+          description: Validation error
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+    get:
+      tags:
+      - Inventory
+      summary: Get all inventory items
+      description: Retrieve a complete list of all inventory items
+      responses:
+        200:
+          description: Successfully retrieved inventory
+          schema:
+            $ref: '#/definitions/InventoriesResponse'
+  /parts/inventory/{inventory_id}:
+    get:
+      tags:
+      - Inventory
+      summary: Get inventory item by ID
+      description: Retrieve a specific inventory item by its ID
+      parameters:
+      - in: path
+        name: inventory_id
+        type: integer
+        required: true
+        description: Inventory item ID
+      responses:
+        200:
+          description: Inventory item found
+          schema:
+            $ref: '#/definitions/InventoryResponse'
+        404:
+          description: Inventory item not found
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+    put:
+      tags:
+      - Inventory
+      summary: Update inventory item
+      description: Update an existing inventory item (e.g., adjust quantity or location)
+      security:
+      - bearerAuth: []
+      parameters:
+      - in: path
+        name: inventory_id
+        type: integer
+        required: true
+        description: Inventory item ID
+      - in: body
+        name: body
+        description: Updated inventory information
+        required: true
+        schema:
+          $ref: '#/definitions/InventoryInput'
+      responses:
+        200:
+          description: Inventory item updated successfully
+          schema:
+            $ref: '#/definitions/InventoryResponse'
+        404:
+          description: Inventory item not found
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+    delete:
+      tags:
+      - Inventory
+      summary: Delete inventory item
+      description: Remove an inventory item from the system (rate limited to 5 per
+        day)
+      security:
+      - bearerAuth: []
+      parameters:
+      - in: path
+        name: inventory_id
+        type: integer
+        required: true
+        description: Inventory item ID to delete
+      responses:
+        200:
+          description: Inventory item deleted successfully
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+        404:
+          description: Inventory item not found
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+  /parts:
+    post:
+      tags:
+      - Parts
+      summary: Create part
+      description: Add a new part to the system for use in service tickets
+      security:
+      - bearerAuth: []
+      parameters:
+      - in: body
+        name: body
+        description: New part information
+        required: true
+        schema:
+          $ref: '#/definitions/PartInput'
+      responses:
+        201:
+          description: Part created successfully
+          schema:
+            $ref: '#/definitions/PartResponse'
+          examples:
+            application/json:
+              id: 1
+              name: Oil Filter
+              part_number: OF-12345
+              cost: 15.99
+              ticket_id: null
+        400:
+          description: Validation error
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+    get:
+      tags:
+      - Parts
+      summary: Get all parts
+      description: Retrieve a list of all parts in the system
+      responses:
+        200:
+          description: Successfully retrieved parts
+          schema:
+            $ref: '#/definitions/PartsResponse'
+  /parts/{part_id}:
+    get:
+      tags:
+      - Parts
+      summary: Get part by ID
+      description: Retrieve a specific part by its ID
+      parameters:
+      - in: path
+        name: part_id
+        type: integer
+        required: true
+        description: Part ID
+      responses:
+        200:
+          description: Part found
+          schema:
+            $ref: '#/definitions/PartResponse'
+        404:
+          description: Part not found
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+    put:
+      tags:
+      - Parts
+      summary: Update part
+      description: Update an existing part's information
+      security:
+      - bearerAuth: []
+      parameters:
+      - in: path
+        name: part_id
+        type: integer
+        required: true
+        description: Part ID
+      - in: body
+        name: body
+        description: Updated part information
+        required: true
+        schema:
+          $ref: '#/definitions/PartInput'
+      responses:
+        200:
+          description: Part updated successfully
+          schema:
+            $ref: '#/definitions/PartResponse'
+        404:
+          description: Part not found
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+    delete:
+      tags:
+      - Parts
+      summary: Delete part
+      description: Remove a part from the system
+      security:
+      - bearerAuth: []
+      parameters:
+      - in: path
+        name: part_id
+        type: integer
+        required: true
+        description: Part ID to delete
+      responses:
+        200:
+          description: Part deleted successfully
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+        404:
+          description: Part not found
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+  /parts/available:
+    get:
+      tags:
+      - Parts
+      summary: Get available parts
+      description: Retrieve all parts that are not currently assigned to any service
+        ticket
+      responses:
+        200:
+          description: Successfully retrieved available parts
+          schema:
+            $ref: '#/definitions/PartsResponse'
+  /service-tickets:
+    post:
+      tags:
+      - Service Tickets
+      summary: Create service ticket
+      description: Create a new service ticket for a customer (rate limited to 10
+        per day)
+      security:
+      - bearerAuth: []
+      parameters:
+      - in: body
+        name: body
+        description: New service ticket information
+        required: true
+        schema:
+          $ref: '#/definitions/ServiceTicketInput'
+      responses:
+        201:
+          description: Service ticket created successfully
+          schema:
+            $ref: '#/definitions/ServiceTicketResponse'
+          examples:
+            application/json:
+              id: 1
+              customer_id: 5
+              description: Oil change and tire rotation
+              status: pending
+              created_at: '2024-01-15T10:30:00Z'
+        400:
+          description: Validation error
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+    get:
+      tags:
+      - Service Tickets
+      summary: Get all service tickets (paginated)
+      description: Retrieve a paginated list of all service tickets. Requires authentication.
+      security:
+      - bearerAuth: []
+      parameters:
+      - in: query
+        name: page
+        type: integer
+        description: 'Page number (default: 1)'
+        required: false
+      - in: query
+        name: per_page
+        type: integer
+        description: 'Items per page (default: 5)'
+        required: false
+      responses:
+        200:
+          description: Successfully retrieved service tickets
+          schema:
+            $ref: '#/definitions/ServiceTicketsResponse'
+  /service-tickets/{ticket_id}:
+    get:
+      tags:
+      - Service Tickets
+      summary: Get service ticket by ID
+      description: Retrieve a specific service ticket by its ID
+      parameters:
+      - in: path
+        name: ticket_id
+        type: integer
+        required: true
+        description: Service ticket ID
+      responses:
+        200:
+          description: Service ticket found
+          schema:
+            $ref: '#/definitions/ServiceTicketResponse'
+        404:
+          description: Service ticket not found
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+    put:
+      tags:
+      - Service Tickets
+      summary: Update service ticket
+      description: Update a service ticket. Only mechanics assigned to the ticket
+        can update it.
+      security:
+      - bearerAuth: []
+      parameters:
+      - in: path
+        name: ticket_id
+        type: integer
+        required: true
+        description: Service ticket ID
+      - in: body
+        name: body
+        description: Updated service ticket information
+        required: true
+        schema:
+          $ref: '#/definitions/ServiceTicketUpdateInput'
+      responses:
+        200:
+          description: Service ticket updated successfully
+          schema:
+            $ref: '#/definitions/ServiceTicketResponse'
+        403:
+          description: Unauthorized - mechanic not assigned to this ticket
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        404:
+          description: Service ticket not found
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+    delete:
+      tags:
+      - Service Tickets
+      summary: Delete service ticket
+      description: Delete a service ticket. Only mechanics assigned to the ticket
+        can delete it. Rate limited to 5 per day.
+      security:
+      - bearerAuth: []
+      parameters:
+      - in: path
+        name: ticket_id
+        type: integer
+        required: true
+        description: Service ticket ID to delete
+      responses:
+        200:
+          description: Service ticket deleted successfully
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+        403:
+          description: Unauthorized - mechanic not assigned to this ticket
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        404:
+          description: Service ticket not found
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+  /service-tickets/{ticket_id}/mechanics/{mechanic_id}:
+    post:
+      tags:
+      - Mechanic Assignment
+      summary: Assign mechanic to ticket
+      description: Assign a mechanic to work on a specific service ticket
+      security:
+      - bearerAuth: []
+      parameters:
+      - in: path
+        name: ticket_id
+        type: integer
+        required: true
+        description: Service ticket ID
+      - in: path
+        name: mechanic_id
+        type: integer
+        required: true
+        description: Mechanic ID to assign
+      responses:
+        200:
+          description: Mechanic assigned successfully
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+          examples:
+            application/json:
+              message: Mechanic Mike Johnson assigned to ticket 1
+        400:
+          description: Mechanic already assigned to this ticket
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        404:
+          description: Service ticket or mechanic not found
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+    delete:
+      tags:
+      - Mechanic Assignment
+      summary: Remove mechanic from ticket
+      description: Remove a mechanic's assignment from a service ticket
+      security:
+      - bearerAuth: []
+      parameters:
+      - in: path
+        name: ticket_id
+        type: integer
+        required: true
+        description: Service ticket ID
+      - in: path
+        name: mechanic_id
+        type: integer
+        required: true
+        description: Mechanic ID to remove
+      responses:
+        200:
+          description: Mechanic removed successfully
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+          examples:
+            application/json:
+              message: Mechanic Mike Johnson removed from ticket 1
+        400:
+          description: Mechanic not assigned to this ticket
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        404:
+          description: Service ticket or mechanic not found
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+  /service-tickets/{ticket_id}/parts/{part_id}:
+    post:
+      tags:
+      - Parts Assignment
+      summary: Add part to service ticket
+      description: Assign a part to a service ticket for tracking parts used in repairs
+      security:
+      - bearerAuth: []
+      parameters:
+      - in: path
+        name: ticket_id
+        type: integer
+        required: true
+        description: Service ticket ID
+      - in: path
+        name: part_id
+        type: integer
+        required: true
+        description: Part ID to add
+      responses:
+        200:
+          description: Part added successfully
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+              part_id:
+                type: integer
+              ticket_id:
+                type: integer
+          examples:
+            application/json:
+              message: Part 1 successfully added to ticket 1
+              part_id: 1
+              ticket_id: 1
+        400:
+          description: Part already assigned to a ticket
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        404:
+          description: Service ticket or part not found
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+    delete:
+      tags:
+      - Parts Assignment
+      summary: Remove part from service ticket
+      description: Remove a part assignment from a service ticket
+      security:
+      - bearerAuth: []
+      parameters:
+      - in: path
+        name: ticket_id
+        type: integer
+        required: true
+        description: Service ticket ID
+      - in: path
+        name: part_id
+        type: integer
+        required: true
+        description: Part ID to remove
+      responses:
+        200:
+          description: Part removed successfully
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+          examples:
+            application/json:
+              message: Part 1 removed from ticket 1
+        400:
+          description: Part not assigned to this ticket
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        404:
+          description: Service ticket or part not found
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+  /service-tickets/{ticket_id}/parts:
+    get:
+      tags:
+      - Parts Assignment
+      summary: Get all parts for a ticket
+      description: Retrieve all parts assigned to a specific service ticket
+      parameters:
+      - in: path
+        name: ticket_id
+        type: integer
+        required: true
+        description: Service ticket ID
+      responses:
+        200:
+          description: Parts retrieved successfully
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/PartResponse'
+        404:
+          description: Service ticket not found
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+definitions:
+  CustomerLoginCredentials:
+    type: object
+    properties:
+      email:
+        type: string
+        example: john@example.com
+      password:
+        type: string
+        example: password123
+    required:
+    - email
+    - password
+  LoginResponse:
+    type: object
+    properties:
+      message:
+        type: string
+      token:
+        type: string
+  CustomerInput:
+    type: object
+    properties:
+      first_name:
+        type: string
+        example: John
+      last_name:
+        type: string
+        example: Doe
+      email:
+        type: string
+        example: john@example.com
+      password:
+        type: string
+        example: password123
+      phone:
+        type: string
+        example: 555-0123
+      address:
+        type: string
+        example: 123 Main St
+  CustomerResponse:
+    type: object
+    properties:
+      id:
+        type: integer
+      first_name:
+        type: string
+      last_name:
+        type: string
+      email:
+        type: string
+      phone:
+        type: string
+      address:
+        type: string
+      password:
+        type: string
+        description: Hashed password
+  CustomersResponse:
+    type: array
+    items:
+      $ref: '#/definitions/CustomerResponse'
+  ServiceTicketResponse:
+    type: object
+    properties:
+      id:
+        type: integer
+      customer_id:
+        type: integer
+      description:
+        type: string
+      status:
+        type: string
+      created_at:
+        type: string
+        format: date-time
+  ErrorResponse:
+    type: object
+    properties:
+      error:
+        type: string
+      message:
+        type: string
+  MechanicLoginCredentials:
+    type: object
+    properties:
+      email:
+        type: string
+        example: mike@shop.com
+      password:
+        type: string
+        example: password123
+    required:
+    - email
+    - password
+  MechanicInput:
+    type: object
+    properties:
+      first_name:
+        type: string
+        example: Mike
+      last_name:
+        type: string
+        example: Johnson
+      email:
+        type: string
+        example: mike@shop.com
+      password:
+        type: string
+        example: password123
+      specialization:
+        type: string
+        example: Engine Repair
+      certification:
+        type: string
+        example: ASE Certified
+  MechanicResponse:
+    type: object
+    properties:
+      id:
+        type: integer
+      first_name:
+        type: string
+      last_name:
+        type: string
+      email:
+        type: string
+      password:
+        type: string
+        description: Hashed password
+      specialization:
+        type: string
+      certification:
+        type: string
+  MechanicsResponse:
+    type: array
+    items:
+      $ref: '#/definitions/MechanicResponse'
+  TopMechanicResponse:
+    type: object
+    properties:
+      id:
+        type: integer
+      first_name:
+        type: string
+      last_name:
+        type: string
+      email:
+        type: string
+      ticket_count:
+        type: integer
+        description: Number of tickets assigned to this mechanic
+  InventoryInput:
+    type: object
+    properties:
+      part_name:
+        type: string
+        example: Brake Pad
+      quantity:
+        type: integer
+        example: 50
+      location:
+        type: string
+        example: Shelf A-3
+      reorder_level:
+        type: integer
+        example: 10
+        description: Minimum quantity before reordering
+  InventoryResponse:
+    type: object
+    properties:
+      id:
+        type: integer
+      part_name:
+        type: string
+      quantity:
+        type: integer
+      location:
+        type: string
+      reorder_level:
+        type: integer
+  InventoriesResponse:
+    type: array
+    items:
+      $ref: '#/definitions/InventoryResponse'
+  PartInput:
+    type: object
+    properties:
+      name:
+        type: string
+        example: Oil Filter
+      part_number:
+        type: string
+        example: OF-12345
+      cost:
+        type: number
+        format: float
+        example: 15.99
+      ticket_id:
+        type: integer
+        example: null
+        description: ID of the service ticket this part is assigned to (null if unassigned)
+  PartResponse:
+    type: object
+    properties:
+      id:
+        type: integer
+      name:
+        type: string
+      part_number:
+        type: string
+      cost:
+        type: number
+        format: float
+      ticket_id:
+        type: integer
+        description: ID of the service ticket this part is assigned to
+  PartsResponse:
+    type: array
+    items:
+      $ref: '#/definitions/PartResponse'
+  ServiceTicketInput:
+    type: object
+    properties:
+      customer_id:
+        type: integer
+        example: 5
+        description: ID of the customer requesting service
+      description:
+        type: string
+        example: Oil change and tire rotation
+      status:
+        type: string
+        example: pending
+        description: Status of the ticket (e.g., pending, in_progress, completed)
+      estimated_cost:
+        type: number
+        format: float
+        example: 89.99
+      notes:
+        type: string
+        example: Customer requested synthetic oil
+  ServiceTicketUpdateInput:
+    type: object
+    properties:
+      description:
+        type: string
+        example: Oil change, tire rotation, and brake inspection
+      status:
+        type: string
+        example: in_progress
+      estimated_cost:
+        type: number
+        format: float
+        example: 129.99
+      notes:
+        type: string
+        example: Found brake wear, recommended replacement
+      mechanic_id:
+        type: array
+        items:
+          type: integer
+        example:
+        - 1
+        - 2
+        description: Array of mechanic IDs to assign to this ticket
+  ServiceTicketsResponse:
+    type: array
+    items:
+      $ref: '#/definitions/ServiceTicketResponse'
